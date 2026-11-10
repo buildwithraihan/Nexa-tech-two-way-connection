@@ -1,0 +1,218 @@
+! ============================================================
+! Device  : SW1-KOCHI
+! Site    : KOCHI
+! Project : NexaTech Solutions - Enterprise Network
+! ============================================================
+!
+! --- Global Configuration ---
+hostname SW1-KOCHI
+no ip domain-lookup
+enable secret NexaTech@2024
+service password-encryption
+!
+banner motd #
+  *******************************************
+  * NexaTech Solutions - Authorised Access  *
+  * Unauthorised access is strictly prohibited *
+  *******************************************
+#
+!
+! --- Console Security ---
+line console 0
+ password Console@2024
+ login
+ logging synchronous
+ exec-timeout 10 0
+!
+! --- VTY (SSH/Telnet) Security ---
+line vty 0 4
+ password VTY@2024
+ login
+ transport input telnet
+ exec-timeout 10 0
+!
+
+! --- VLAN Definitions ---
+vlan 10
+ name HR
+!
+vlan 20
+ name IT
+!
+vlan 30
+ name Finance
+!
+vlan 40
+ name Servers
+!
+vlan 99
+ name Management
+!
+
+! --- Management SVI (VLAN 99) ---
+interface vlan 99
+ description Management-Interface
+ ip address 192.168.99.2 255.255.255.0
+ no shutdown
+!
+ip default-gateway 192.168.99.1
+!
+! --- Access Ports ---
+! Fa0/1-2 : HR Department (VLAN 10)
+interface FastEthernet0/1
+ description HR-PC-VLAN10
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ no shutdown
+!
+interface FastEthernet0/2
+ description HR-PC-VLAN10
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ no shutdown
+!
+! Fa0/3-4 : IT Department (VLAN 20)
+interface FastEthernet0/3
+ description IT-PC-VLAN20
+ switchport mode access
+ switchport access vlan 20
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ no shutdown
+!
+interface FastEthernet0/4
+ description IT-PC-VLAN20
+ switchport mode access
+ switchport access vlan 20
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ no shutdown
+!
+! --- Disable unused access ports (security) ---
+interface FastEthernet0/5
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/6
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/7
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/8
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/9
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/10
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/11
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/12
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/13
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/14
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/15
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/16
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/17
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/18
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/19
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/20
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/21
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/22
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/23
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+interface FastEthernet0/24
+ shutdown
+ switchport mode access
+ switchport access vlan 99
+!
+! --- Trunk Ports ---
+interface GigabitEthernet0/1
+ description Trunk-to-Router-KOCHI
+ switchport mode trunk
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 10,20,30,40,99
+ switchport trunk native vlan 99
+ no shutdown
+!
+interface GigabitEthernet0/2
+ description Trunk-to-SW2-KOCHI
+ switchport mode trunk
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 10,20,30,40,99
+ switchport trunk native vlan 99
+ no shutdown
+!
+! --- Spanning Tree ---
+spanning-tree mode rapid-pvst
+spanning-tree vlan 10,20,30,40,99 priority 4096
+!
+end
+write memory

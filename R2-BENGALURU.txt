@@ -1,0 +1,182 @@
+! ============================================================
+! Device  : R2-BENGALURU
+! Site    : BENGALURU
+! Project : NexaTech Solutions - Enterprise Network
+! ============================================================
+!
+! --- Global Configuration ---
+hostname R2-BENGALURU
+no ip domain-lookup
+enable secret NexaTech@2024
+service password-encryption
+!
+banner motd #
+  *******************************************
+  * NexaTech Solutions - Authorised Access  *
+  * Unauthorised access is strictly prohibited *
+  *******************************************
+#
+!
+! --- Console Security ---
+line console 0
+ password Console@2024
+ login
+ logging synchronous
+ exec-timeout 10 0
+!
+! --- VTY (SSH/Telnet) Security ---
+line vty 0 4
+ password VTY@2024
+ login
+ transport input telnet
+ exec-timeout 10 0
+!
+
+! --- Router-on-a-Stick: Sub-interfaces on G0/0 ---
+interface GigabitEthernet0/0
+ description Trunk-to-SW1-BENGALURU
+ no shutdown
+!
+! Sub-interface for VLAN 10 (HR)
+interface GigabitEthernet0/0.10
+ description VLAN10-HR
+ encapsulation dot1Q 10
+ ip address 192.168.110.1 255.255.255.0
+ ip helper-address 192.168.140.10
+ ip access-group VLAN10-HR in
+ no shutdown
+!
+! Sub-interface for VLAN 20 (IT)
+interface GigabitEthernet0/0.20
+ description VLAN20-IT
+ encapsulation dot1Q 20
+ ip address 192.168.120.1 255.255.255.0
+ ip helper-address 192.168.140.10
+ no shutdown
+!
+! Sub-interface for VLAN 30 (Finance)
+interface GigabitEthernet0/0.30
+ description VLAN30-Finance
+ encapsulation dot1Q 30
+ ip address 192.168.130.1 255.255.255.0
+ ip helper-address 192.168.140.10
+ ip access-group VLAN30-FINANCE in
+ no shutdown
+!
+! Sub-interface for VLAN 40 (Servers)
+interface GigabitEthernet0/0.40
+ description VLAN40-Servers
+ encapsulation dot1Q 40
+ ip address 192.168.140.1 255.255.255.0
+ ip helper-address 192.168.140.10
+ no shutdown
+!
+! Sub-interface for VLAN 99 (Management)
+interface GigabitEthernet0/0.99
+ description VLAN99-Management
+ encapsulation dot1Q 99
+ ip address 192.168.199.1 255.255.255.0
+ ip access-group MGMT-ACCESS in
+ no shutdown
+!
+! --- WAN Interface (Ethernet to remote router) ---
+interface GigabitEthernet0/1
+ description WAN-Link-to-R1-KOCHI
+ ip address 10.10.10.2 255.255.255.252
+ no shutdown
+!
+! --- DHCP Pools (one per departmental VLAN) ---
+! Exclude static addresses from VLAN 10 pool
+ip dhcp excluded-address 192.168.110.1 192.168.110.9
+! Exclude static addresses from VLAN 20 pool
+ip dhcp excluded-address 192.168.120.1 192.168.120.9
+! Exclude static addresses from VLAN 30 pool
+ip dhcp excluded-address 192.168.130.1 192.168.130.9
+! Exclude static addresses from VLAN 40 pool
+ip dhcp excluded-address 192.168.140.1 192.168.140.9
+!
+ip dhcp pool BENGALURU-VLAN10-HR
+ network 192.168.110.0 255.255.255.0
+ default-router 192.168.110.1
+ dns-server 192.168.140.10
+ domain-name nexatech.local
+ lease 1
+!
+ip dhcp pool BENGALURU-VLAN20-IT
+ network 192.168.120.0 255.255.255.0
+ default-router 192.168.120.1
+ dns-server 192.168.140.10
+ domain-name nexatech.local
+ lease 1
+!
+ip dhcp pool BENGALURU-VLAN30-Finance
+ network 192.168.130.0 255.255.255.0
+ default-router 192.168.130.1
+ dns-server 192.168.140.10
+ domain-name nexatech.local
+ lease 1
+!
+ip dhcp pool BENGALURU-VLAN40-Servers
+ network 192.168.140.0 255.255.255.0
+ default-router 192.168.140.1
+ dns-server 192.168.140.10
+ domain-name nexatech.local
+ lease 1
+!
+! --- Static Routes to remote branch ---
+ip route 192.168.10.0 255.255.255.0 10.10.10.1  ! Route to KOCHI VLAN 10 (HR)
+ip route 192.168.20.0 255.255.255.0 10.10.10.1  ! Route to KOCHI VLAN 20 (IT)
+ip route 192.168.30.0 255.255.255.0 10.10.10.1  ! Route to KOCHI VLAN 30 (Finance)
+ip route 192.168.40.0 255.255.255.0 10.10.10.1  ! Route to KOCHI VLAN 40 (Servers)
+ip route 192.168.99.0 255.255.255.0 10.10.10.1  ! Route to KOCHI VLAN 99 (Management)
+! Default route stub toward WAN (optional)
+!
+! ============================================================
+! ACL DESIGN for BENGALURU
+!
+! VLAN10-HR-ACL  : Applied inbound on G0/0.10
+!   - Deny HR to local Finance
+!   - Deny HR to remote Finance
+!   - Permit everything else from HR
+!
+! VLAN30-FINANCE-ACL : Applied inbound on G0/0.30
+!   - Deny Finance to local HR
+!   - Deny Finance to remote HR
+!   - Permit everything else from Finance
+!
+! MGMT-ACCESS    : Applied inbound on G0/0.99
+!   - Permit only IT subnet to reach management
+!   - Deny all others
+! ============================================================
+!
+! ACL: HR cannot access Finance (local + remote)
+ip access-list extended VLAN10-HR
+ 10 remark Deny HR to local Finance VLAN
+ 10 deny ip 192.168.110.0 0.0.0.255 192.168.130.0 0.0.0.255
+ 20 remark Deny HR to remote Finance VLAN
+ 20 deny ip 192.168.110.0 0.0.0.255 192.168.30.0 0.0.0.255
+ 30 remark Permit HR to access everything else
+ 30 permit ip 192.168.110.0 0.0.0.255 any
+!
+! ACL: Finance cannot access HR (local + remote)
+ip access-list extended VLAN30-FINANCE
+ 10 remark Deny Finance to local HR VLAN
+ 10 deny ip 192.168.130.0 0.0.0.255 192.168.110.0 0.0.0.255
+ 20 remark Deny Finance to remote HR VLAN
+ 20 deny ip 192.168.130.0 0.0.0.255 192.168.10.0 0.0.0.255
+ 30 remark Permit Finance to access everything else
+ 30 permit ip 192.168.130.0 0.0.0.255 any
+!
+! ACL: Management VLAN restricted to IT admins only
+ip access-list extended MGMT-ACCESS
+ 10 remark Permit IT subnet to management
+ 10 permit ip 192.168.120.0 0.0.0.255 192.168.199.0 0.0.0.255
+ 20 remark Deny all other traffic to management
+ 20 deny ip any 192.168.199.0 0.0.0.255
+ 30 remark Permit remaining management-originated traffic
+ 30 permit ip any any
+!
+
+! --- Save Configuration ---
+end
+write memory
